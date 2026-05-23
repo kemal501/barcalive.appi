@@ -28,4 +28,11 @@ class ExampleRobolectricTest {
       }
     }
   }
+
+  @Test
+  fun `test BarcaViewModel instantiation`() {
+    val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+    val vm = BarcaViewModel(app)
+    assert(vm != null)
+  }
 }

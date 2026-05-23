@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -29,6 +31,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1260,270 +1266,329 @@ fun WalletScreenContent(
     userCoins: Double,
     transactions: List<TransactionEntity>
 ) {
+    var activeSubTab by remember { mutableStateOf("Payouts") } // Payouts vs Coins
     var withdrawAmountStr by remember { mutableStateOf("") }
     var paymentMethod by remember { mutableStateOf("Mobile Money") } // Mobile Money, PayPal, Bank Account
     var targetAccountAddress by remember { mutableStateOf("") }
     var logText by remember { mutableStateOf("") }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Column(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // VIP Purple Visa-styled Card
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(170.dp)
-                    .testTag("wallet_credit_card"),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-            ) {
+        // TAB CAPTION HEADER ROUGH SELECTOR
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .background(Color(0xFFF3EDF7), RoundedCornerShape(12.dp))
+                .padding(4.dp)
+        ) {
+            val tabs = listOf(
+                "Secure Payouts 💸" to "Payouts", 
+                "Coin System 🎮" to "Coins",
+                "Agency Center 🏢" to "Agency"
+            )
+            for ((label, tab) in tabs) {
+                val active = activeSubTab == tab
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color(0xFF6750A4), Color(0xFF1D192B))
-                            )
-                        )
-                        .padding(20.dp)
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (active) Color(0xFF6750A4) else Color.Transparent)
+                        .clickable { activeSubTab = tab }
+                        .padding(vertical = 10.dp)
+                        .testTag("wallet_sub_tab_$tab"),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Coin balance representation
-                    Column(
-                        modifier = Modifier.fillMaxHeight(),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Barca-live Secure Wallet",
-                                color = Color.White.copy(alpha = 0.6f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(
-                                imageVector = Icons.Default.Security,
-                                contentDescription = "Security lock symbol",
-                                tint = Color.Green,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        // Cash balance indicator
-                        Column {
-                            Text(
-                                text = "${userCoins.toInt()} 🪙 Coins",
-                                color = Color.White,
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Equivalent balance: \$${String.format("%.2f", userCoins / 100.0)} USD",
-                                color = Color(0xFFE8DEF8),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "WALLET HOLDER: OFFLINE USER",
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "100 🪙 = \$1.00 USD",
-                                color = Color.White.copy(alpha = 0.5f),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                    Text(
+                        text = label,
+                        color = if (active) Color.White else Color(0xFF49454F),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
 
-        // Conversion and withdrawal submission deck
-        item {
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF3EDF7)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        if (activeSubTab == "Coins") {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Secure Funds Withdrawal",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF6750A4)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Convert coin packages to real withdraws immediately. Simulated updates record to the offline ledger list below.",
-                        fontSize = 10.sp,
-                        color = Color(0xFF49454F)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "Specify Coin Quantity:",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = withdrawAmountStr,
-                        onValueChange = { withdrawAmountStr = it },
-                        placeholder = { Text("E.g., 500") },
+                CoinSystemDashboard(viewModel = viewModel)
+            }
+        } else if (activeSubTab == "Agency") {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                AgencyCenterDashboard(viewModel = viewModel)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // VIP Purple Visa-styled Card
+                item {
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("withdraw_coins_input"),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF6750A4)
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "Payment Transfer Platform:",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        val routes = listOf("Mobile Money", "PayPal", "Bank Card")
-                        for (route in routes) {
-                            val active = paymentMethod == route
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (active) Color(0xFF6750A4) else Color.White)
-                                    .border(1.dp, Color(0xFFCAC4D0), RoundedCornerShape(8.dp))
-                                    .clickable { paymentMethod = route }
-                                    .padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center
+                            .height(170.dp)
+                            .testTag("wallet_credit_card"),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color(0xFF6750A4), Color(0xFF1D192B))
+                                    )
+                                )
+                                .padding(20.dp)
+                        ) {
+                            // Coin balance representation
+                            Column(
+                                modifier = Modifier.fillMaxHeight(),
+                                verticalArrangement = Arrangement.SpaceBetween
                             ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Barca-live Secure Wallet",
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.Security,
+                                        contentDescription = "Security lock symbol",
+                                        tint = Color.Green,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                // Cash balance indicator
+                                Column {
+                                    Text(
+                                        text = "${userCoins.toInt()} 🪙 Coins",
+                                        color = Color.White,
+                                        fontSize = 28.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Equivalent balance: $${String.format("%.2f", userCoins / 100.0)} USD",
+                                        color = Color(0xFFE8DEF8),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "WALLET HOLDER: OFFLINE USER",
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "100 🪙 = $1.00 USD",
+                                        color = Color.White.copy(alpha = 0.5f),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Conversion and withdrawal submission deck
+                item {
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF3EDF7)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Secure Funds Withdrawal",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF6750A4)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Convert coin packages to real withdraws immediately. Simulated updates record to the offline ledger list below.",
+                                fontSize = 10.sp,
+                                color = Color(0xFF49454F)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "Specify Coin Quantity:",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            OutlinedTextField(
+                                value = withdrawAmountStr,
+                                onValueChange = { withdrawAmountStr = it },
+                                placeholder = { Text("E.g., 500") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("withdraw_coins_input"),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color(0xFF6750A4)
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "Payment Transfer Platform:",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                val routes = listOf("Mobile Money", "PayPal", "Bank Card")
+                                for (route in routes) {
+                                    val active = paymentMethod == route
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (active) Color(0xFF6750A4) else Color.White)
+                                            .border(1.dp, Color(0xFFCAC4D0), RoundedCornerShape(8.dp))
+                                            .clickable { paymentMethod = route }
+                                            .padding(vertical = 10.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = route,
+                                            color = if (active) Color.White else Color(0xFF49454F),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "Recipient Card No/Address:",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            OutlinedTextField(
+                                value = targetAccountAddress,
+                                onValueChange = { targetAccountAddress = it },
+                                placeholder = { Text("E.g., +251 9... / paypal@mail / IBAN") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("withdraw_address_input"),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color(0xFF6750A4)
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Button(
+                                onClick = {
+                                    val amt = withdrawAmountStr.toDoubleOrNull()
+                                    if (amt == null || amt <= 0) {
+                                        logText = "❌ Please specify a valid postive coin number."
+                                        return@Button
+                                    }
+                                    if (targetAccountAddress.trim().isEmpty()) {
+                                        logText = "❌ Please provide your payout address."
+                                        return@Button
+                                    }
+
+                                    viewModel.requestWithdraw(amt, paymentMethod, targetAccountAddress) { success, msg ->
+                                        logText = if (success) "✅ $msg" else "❌ $msg"
+                                        if (success) {
+                                            withdrawAmountStr = ""
+                                            targetAccountAddress = ""
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .testTag("withdraw_submit_btn"),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6750A4)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Initiate Secure Payout 💸", fontWeight = FontWeight.Bold)
+                            }
+
+                            if (logText.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = route,
-                                    color = if (active) Color.White else Color(0xFF49454F),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
+                                    text = logText,
+                                    fontSize = 11.sp,
+                                    color = if (logText.contains("✅")) Color(0xFF2E7D32) else Color(0xFFB3261E),
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "Recipient Card No/Address:",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = targetAccountAddress,
-                        onValueChange = { targetAccountAddress = it },
-                        placeholder = { Text("E.g., +251 9... / paypal@mail / IBAN") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("withdraw_address_input"),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF6750A4)
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            val amt = withdrawAmountStr.toDoubleOrNull()
-                            if (amt == null || amt <= 0) {
-                                logText = "❌ Please specify a valid postive coin number."
-                                return@Button
-                            }
-                            if (targetAccountAddress.trim().isEmpty()) {
-                                logText = "❌ Please provide your payout address."
-                                return@Button
-                            }
-
-                            viewModel.requestWithdraw(amt, paymentMethod, targetAccountAddress) { success, msg ->
-                                logText = if (success) "✅ $msg" else "❌ $msg"
-                                if (success) {
-                                    withdrawAmountStr = ""
-                                    targetAccountAddress = ""
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("withdraw_submit_btn"),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6750A4)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Initiate Secure Payout 💸", fontWeight = FontWeight.Bold)
-                    }
-
-                    if (logText.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = logText,
-                            fontSize = 11.sp,
-                            color = if (logText.contains("✅")) Color(0xFF2E7D32) else Color(0xFFB3261E),
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
                 }
-            }
-        }
 
-        // Ledger History label
-        item {
-            Text(
-                text = "Wallet Ledger History",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-        if (transactions.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                // Ledger History label
+                item {
                     Text(
-                        text = "No recorded transactions on your account.",
-                        fontSize = 12.sp,
-                        color = Color(0xFF49454F)
+                        text = "Wallet Ledger History",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
-            }
-        } else {
-            items(transactions) { tx ->
-                TransactionListItem(tx = tx)
+
+                if (transactions.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No recorded transactions on your account.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF49454F)
+                            )
+                        }
+                    }
+                } else {
+                    items(transactions) { tx ->
+                        TransactionListItem(tx = tx)
+                    }
+                }
             }
         }
     }
@@ -1881,7 +1946,7 @@ fun MissionListItem(mission: MissionEntity, onClaim: () -> Unit) {
 // ---------------- ALERTS POP-UP TRAY OVERLAY ----------------
 @Composable
 fun AlertsBannerOverlay(notifications: List<String>) {
-    val safeNotifications = remember(notifications.size) { notifications.toList() }
+    val safeNotifications = notifications.toList()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1931,52 +1996,165 @@ fun StreamPlayerOverlay(
     viewModel: BarcaViewModel,
     onCloseClick: () -> Unit
 ) {
+    val context = LocalContext.current
     var chatInputValue by remember { mutableStateOf("") }
     var showGiftDrawer by remember { mutableStateOf(false) }
+    var showNoticeBoard by remember { mutableStateOf(true) }
+    var isBackgroundMusicPlaying by remember { mutableStateOf(false) }
+    var showBagDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showAdminDialog by remember { mutableStateOf(false) }
+    var triggerFireworksEffect by remember { mutableStateOf(false) }
+    var selectedBagItemMsg by remember { mutableStateOf<String?>(null) }
+    
+    // Interactive Room Seats state mapping: occupantName, avatarInitial, avatarColor
+    var seatOccupants by remember {
+        mutableStateOf(
+            listOf(
+                Triple("Barca-live Host", "H", Color(0xFFEF4444)),
+                Triple("Ansu_10", "A", Color(0xFF3B82F6)),
+                Triple("Matias_FC", "M", Color(0xFF10B981)),
+                Triple<String?, String, Color>(null, "", Color.Transparent),
+                Triple<String?, String, Color>(null, "", Color.Transparent),
+                Triple<String?, String, Color>(null, "", Color.Transparent),
+                Triple<String?, String, Color>(null, "", Color.Transparent),
+                Triple<String?, String, Color>(null, "", Color.Transparent),
+                Triple<String?, String, Color>(null, "", Color.Transparent)
+            )
+        )
+    }
+
+    // Set of indicators currently speaking
+    var speakingSeats by remember { mutableStateOf(setOf(1)) }
+
+    // Pulsate animation for active speakers (Translates HTML speaking class keyframe animation)
+    val infiniteTransition = rememberInfiniteTransition(label = "pulsating_mic")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+
+    // Firework sparkles/effects lines configuration state
+    var fireworksParticles by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    LaunchedEffect(triggerFireworksEffect) {
+        if (triggerFireworksEffect) {
+            // Populate animated sparks
+            fireworksParticles = List(30) {
+                Offset(
+                    x = (100..900).random().toFloat(),
+                    y = (200..1200).random().toFloat()
+                )
+            }
+            delay(3000)
+            triggerFireworksEffect = false
+            fireworksParticles = emptyList()
+        }
+    }
+
+    // Periodic simulation of audience activities to mimic a real dynamic room!
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(15000)
+            // Randomly toggle speaking seats to simulate interactive discussion
+            val nextSpeakers = mutableSetOf(1)
+            if ((0..1).random() == 1) nextSpeakers.add(2)
+            if ((0..1).random() == 1) nextSpeakers.add(3)
+            speakingSeats = nextSpeakers
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color(0xFF0C0A12))
     ) {
-        // VIDEO BACKGROUND CANVAS: Renders dynamic stadium particles/flowing vectors offline
+        // --- 1. PREMIUM COZY STADIUM NIGHT GRADIENT BACKGROUND CANVAS ---
         Canvas(modifier = Modifier.fillMaxSize()) {
             val canvasWidth = size.width
             val canvasHeight = size.height
 
-            // Simulated stadium light gradients
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF1D192B), Color(0xFF110E1A)),
-                    center = Offset(canvasWidth / 2f, canvasHeight / 3f),
-                    radius = canvasWidth
+            if (canvasWidth > 0f && canvasHeight > 0f) {
+                // Radial camp-nou twilight dark blue / bordeaux red gradient aura
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF3A0D15), Color(0xFF0F0E1C), Color(0xFF030305)),
+                        center = Offset(canvasWidth / 2f, canvasHeight / 3f),
+                        radius = canvasWidth * 1.2f
+                    )
                 )
-            )
 
-            // Draw spinning soccer lines
-            drawCircle(
-                color = Color(0xFF6750A4).copy(alpha = 0.25f),
-                center = Offset(canvasWidth / 2f, canvasHeight / 2f),
-                radius = canvasWidth * 0.35f,
-                style = Stroke(width = 4f)
-            )
+                // Render glowing stage spotlights reflecting on active mic sessions
+                drawCircle(
+                    color = Color(0xFF00FFD0).copy(alpha = 0.05f),
+                    center = Offset(canvasWidth / 2f, canvasHeight * 0.35f),
+                    radius = canvasWidth * 0.45f
+                )
 
-            drawLine(
-                color = Color(0xFFB3261E).copy(alpha = 0.15f),
-                start = Offset(0f, canvasHeight / 2f),
-                end = Offset(canvasWidth, canvasHeight / 2f),
-                strokeWidth = 3f
-            )
+                // Animated equalizers backdrop helper
+                if (isBackgroundMusicPlaying) {
+                    for (i in 0..12) {
+                        val barHeight = (40..160).random().toFloat()
+                        val barX = (canvasWidth / 14f) * i + 30f
+                        drawRect(
+                            color = Color(0xFF00FFD0).copy(alpha = 0.12f),
+                            topLeft = Offset(barX, canvasHeight - barHeight - 120f),
+                            size = androidx.compose.ui.geometry.Size(12f, barHeight)
+                        )
+                    }
+                }
+
+                // Render active colorful fireworks if triggered from bottom actions list
+                if (fireworksParticles.isNotEmpty()) {
+                    fireworksParticles.forEach { particle ->
+                        drawCircle(
+                            color = listOf(Color(0xFFFF00CC), Color(0xFF3333FF), Color(0xFF00FFD0), Color(0xFFFFCC00)).random(),
+                            center = particle,
+                            radius = (4..12).random().toFloat()
+                        )
+                    }
+                }
+            }
         }
 
-        // PRIMARY OVERLAY COLUMN
+        // --- 2. LIVE RED CENTER BADGE ---
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 18.dp)
+                .background(Color(0xFFEF4444), RoundedCornerShape(20.dp))
+                .padding(horizontal = 14.dp, vertical = 4.dp)
+                .testTag("room_live_badge"),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(Color.White, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "🔴 LIVE",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // --- PRIMARY CONTENT COLUMN ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-                .safeDrawingPadding() // Notch awareness
+                .safeDrawingPadding() // Ensures no notch overlapping
         ) {
-            // 1. TOP STATUS HEADER
+            // --- TOP STATUS BAR (Host Info, Exit) ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1984,212 +2162,258 @@ fun StreamPlayerOverlay(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Channel profile badge info
+                // Host badge cards
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier
-                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(24.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(36.dp)
                             .background(Color(0xFF6750A4), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stream.hostUsername.first().uppercase(),
+                            text = "H",
                             color = Color.White,
-                            fontSize = 12.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Column {
                         Text(
-                            text = "@${stream.hostUsername}",
+                            text = "Barca-live Host",
                             color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (isHost) "Hosting (Live Studio)" else "Watching Stream",
-                            color = Color(0xFFE8DEF8),
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.SemiBold
+                            text = "ID: 1086462",
+                            color = Color.White.copy(alpha = 0.75f),
+                            fontSize = 10.sp
                         )
                     }
                 }
 
-                // Close & simulated coin metrics
+                // Top Actions Header list
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Plus Add
                     Box(
                         modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .size(38.dp)
+                            .background(Color.White.copy(alpha = 0.15f), CircleShape)
+                            .clickable {
+                                android.widget.Toast.makeText(context, "Added room to shortcuts!", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .background(Color.Green, CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "$viewersCount viewers",
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text("➕", fontSize = 16.sp, color = Color.White)
                     }
 
-                    // Leave broadcast clicker
+                    // Share Link
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(Color.White.copy(alpha = 0.15f), CircleShape)
+                            .clickable {
+                                android.widget.Toast.makeText(context, "Room link copied to clipboard!", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🔗", fontSize = 16.sp, color = Color.White)
+                    }
+
+                    // Leave/Close Stream Button
                     IconButton(
                         onClick = onCloseClick,
                         modifier = Modifier
                             .background(Color(0xFFB3261E), CircleShape)
-                            .size(34.dp)
+                            .size(38.dp)
                             .testTag("leave_stream_btn")
                     ) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Exit stream player", tint = Color.White, modifier = Modifier.size(16.dp))
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Exit streaming room",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // 2. LIVE SHOW TAGS AND STATS OVERVIEW
+            // --- COIN & VIRTUAL GAME TOKEN STATS BOX ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFFB3261E), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(text = "HD 1080P", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(text = "Category: ${stream.category}", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                    }
+                // Coins Counter
+                Box(
+                    modifier = Modifier
+                        .background(
+                            Brush.horizontalGradient(listOf(Color(0xFFFFCC00), Color(0xFFFF9900))),
+                            RoundedCornerShape(20.dp)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "🪙 25,000",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
-                if (isHost) {
+                // Gaming Tokens Counter
+                Box(
+                    modifier = Modifier
+                        .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
                     Text(
-                        text = "Received Coins: ${earnedCoins.toInt()} 🪙",
-                        color = Color.Green,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                        text = "🎮 320",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            // 3. SPECIAL AUDIO/MIC RIPPLES FOR OPEN MC/VOICE CHATS
-            val isVoiceRoom = stream.category.lowercase().contains("mic") || stream.category.lowercase().contains("voice")
-            val safeVocalSpeakers = remember(vocalSpeakers.size) { vocalSpeakers.toList() }
-            if (isVoiceRoom && safeVocalSpeakers.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                // Grid of simulated mic speakers
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f))
-                ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "🎙️ Global Open-Mic Voice Cabin",
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Simulated Speaking...",
-                                color = Color.LightGray,
-                                fontSize = 8.sp
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            for (speaker in safeVocalSpeakers.take(4)) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // --- 3. THE 9-SEATS INTERACTIVE AUDIENCE GRID ---
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                for (row in 0..2) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        for (col in 0..2) {
+                            val seatIndex = row * 3 + col
+                            val actualSeatNum = seatIndex + 1
+                            val state = seatOccupants[seatIndex]
+                            val isOccupied = state.first != null
+                            val isSpeaking = speakingSeats.contains(actualSeatNum)
+
+                            // Base interactive item container
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
                                 Box(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .border(
-                                            width = if (speaker.second) 1.5.dp else 1.dp,
-                                            color = if (speaker.second) Color.Green else Color.White.copy(alpha = 0.2f),
-                                            shape = RoundedCornerShape(10.dp)
+                                        .size(76.dp)
+                                        .then(
+                                            if (isSpeaking) Modifier.scale(pulseScale) else Modifier
                                         )
-                                        .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
-                                        .padding(6.dp),
+                                        .border(
+                                            width = if (isSpeaking) 3.dp else 2.dp,
+                                            color = if (isSpeaking) Color(0xFF00FFD0) else Color.White.copy(alpha = 0.15f),
+                                            shape = CircleShape
+                                        )
+                                        .background(
+                                            if (isOccupied) Color.Black.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.08f),
+                                            CircleShape
+                                        )
+                                        .clip(CircleShape)
+                                        .clickable {
+                                            if (isOccupied) {
+                                                // Toggle Speaking status
+                                                speakingSeats = if (speakingSeats.contains(actualSeatNum)) {
+                                                    speakingSeats - actualSeatNum
+                                                } else {
+                                                    speakingSeats + actualSeatNum
+                                                }
+                                            } else {
+                                                // Vacant mic seat click -> user occupies the mic seat!
+                                                val updatedList = seatOccupants.toMutableList()
+                                                updatedList[seatIndex] = Triple("You", "Y", Color(0xFF8B5CF6))
+                                                seatOccupants = updatedList
+                                                android.widget.Toast.makeText(context, "You stepped onto Mic seat $actualSeatNum!", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    if (isOccupied) {
+                                        // Occupant badge representation
                                         Box(
                                             modifier = Modifier
-                                                .size(20.dp)
-                                                .background(if (speaker.second) Color.Green else Color.Gray, CircleShape),
+                                                .fillMaxSize()
+                                                .background(state.third),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Mic,
-                                                contentDescription = "Mic Indicator",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(10.dp)
+                                            Text(
+                                                text = state.second,
+                                                color = Color.White,
+                                                fontSize = 24.sp,
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
-                                        Spacer(modifier = Modifier.height(2.dp))
+                                    } else {
+                                        // Empty/Open seat indicator icon
+                                        Icon(
+                                            imageVector = Icons.Default.Mic,
+                                            contentDescription = "Empty Mic Slot",
+                                            tint = Color.White.copy(alpha = 0.4f),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+
+                                    // Crown emoji positioning for index 1, 2, 3
+                                    if (actualSeatNum <= 3) {
                                         Text(
-                                            text = speaker.first,
-                                            color = Color.White,
-                                            fontSize = 8.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            text = "👑",
+                                            fontSize = 18.sp,
+                                            modifier = Modifier
+                                                .align(Alignment.TopCenter)
+                                                .offset(y = (-4).dp)
                                         )
                                     }
                                 }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // Seat number label
+                                Text(
+                                    text = state.first ?: "$actualSeatNum",
+                                    color = if (isOccupied) Color.White else Color.White.copy(alpha = 0.5f),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.width(76.dp),
+                                    textAlign = TextAlign.Center
+                                )
                             }
                         }
                     }
                 }
             }
 
-            // 4. MULTIPLAYER FISH MINI-GAME EMBED PANEL
-            // Playable Fish game right inside the player for maximum recreation!
-            val isGamingRoom = stream.category.lowercase().contains("game") || stream.category.lowercase().contains("gaming")
-            if (isGamingRoom) {
-                Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.weight(1f))
+
+            // --- MULTIPLAYER FISH ARENA MINI-GAME TOGGLE ---
+            if (viewModel.isFishGameRunning.value) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                        .testTag("fish_game_cabin"),
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.72f)),
-                    border = BorderStroke(1.dp, Color(0xFF6750A4).copy(alpha = 0.5f))
+                    border = BorderStroke(1.dp, Color(0xFF00FFD0).copy(alpha = 0.4f))
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(modifier = Modifier.padding(10.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -2201,121 +2425,115 @@ fun StreamPlayerOverlay(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
-                            Icon(
-                                imageVector = Icons.Default.VideogameAsset,
-                                tint = Color(0xFFE8DEF8),
-                                contentDescription = "game logo",
-                                modifier = Modifier.size(14.dp)
-                            )
+                            IconButton(onClick = { viewModel.exitFishGame() }, modifier = Modifier.size(20.dp)) {
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Exit game", tint = Color.White, modifier = Modifier.size(14.dp))
+                            }
                         }
-
                         Spacer(modifier = Modifier.height(4.dp))
-
-                        if (viewModel.isFishGameRunning.value) {
-                            Text(
-                                text = viewModel.fishStatusMessage.value,
-                                color = Color.Green,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            MovingFishIndicator(fishPositionProvider = { viewModel.fishPositionX.value })
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Button(
-                                    onClick = { viewModel.catchFish() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(34.dp)
-                                        .testTag("catch_fish_btn")
-                                ) {
-                                    Text("🎯 CATCH!", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                }
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Button(
-                                    onClick = { viewModel.exitFishGame() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f)),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier
-                                        .height(34.dp)
-                                        .testTag("exit_fish_btn")
-                                ) {
-                                    Text("Quit", fontSize = 10.sp, color = Color.White)
-                                }
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Participate instantly. Entry Fee: 0 coins. Earn up to 15.0 🪙 per catch!",
-                                    color = Color.LightGray,
-                                    fontSize = 9.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Button(
-                                    onClick = { viewModel.startFishGame() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6750A4)),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier
-                                        .height(32.dp)
-                                        .testTag("start_fish_game_btn")
-                                ) {
-                                    Text("PLAY NOW", fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
+                        Text(
+                            text = viewModel.fishStatusMessage.value,
+                            color = Color(0xFF00FFD0),
+                            fontSize = 9.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        MovingFishIndicator(fishPositionProvider = { viewModel.fishPositionX.value })
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.catchFish() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00FFD0)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(32.dp)
+                        ) {
+                            Text("🎯 CATCH FISH NOW!", color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // --- 4. FLOATING ROOM RULES/NOTICE BOARD ---
+            if (showNoticeBoard) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.65f)),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📋 Room Rules & Notices",
+                                color = Color(0xFF00FFD0),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(
+                                onClick = { showNoticeBoard = false },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Dismiss notice board",
+                                    tint = Color.White.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "1. Respect everyone in the room.\n2. No abusive language.\n3. Room admin can mute users.\n4. Enjoy Barca-live voice chatting together.",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp
+                        )
+                    }
+                }
+            }
 
-            // 5. FLOATING SCROLLING COMMENTS WINDOW
+            // --- 5. CHAT MESSAGES SCROLL PANEL ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .height(110.dp)
             ) {
-                val safeReversedComments = remember(comments.size) { comments.toList().reversed() }
+                val combinedLogs = remember(comments) {
+                    listOf(
+                        "System" to "🔥 Welcome to Barca-live room",
+                        "System" to "🎤 User joined the room"
+                    ) + comments
+                }.reversed()
+
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
-                    reverseLayout = true // scroll from bottom up!
+                    reverseLayout = true
                 ) {
-                    items(safeReversedComments) { comment ->
+                    items(combinedLogs) { log ->
                         Row(
                             modifier = Modifier
-                                .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = "${comment.first}:",
-                                color = if (comment.first == "You") Color(0xFFD0BCFF) else Color(0xFFE8DEF8),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold
+                                text = if (log.first == "System") "📢" else "🗨️ ${log.first}:",
+                                color = Color(0xFF00FFD0),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = comment.second,
+                                text = log.second,
                                 color = Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Normal
+                                fontSize = 11.sp
                             )
                         }
                     }
@@ -2324,20 +2542,19 @@ fun StreamPlayerOverlay(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 6. BOTTOM CHAT INPUT BAR & ACTIONS
+            // --- 6. CHAT INPUT BAR & FLOAT GIFT DISPATCH ACTION ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
-                    .testTag("stream_actions_layer"),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    .height(48.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Outlined Comment Field
+                // Outlined message typing bar
                 OutlinedTextField(
                     value = chatInputValue,
                     onValueChange = { chatInputValue = it },
-                    placeholder = { Text("Comment...", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp) },
+                    placeholder = { Text("Say hello...", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) },
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -2346,8 +2563,10 @@ fun StreamPlayerOverlay(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFFE8DEF8),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f)
+                        focusedBorderColor = Color(0xFF00FFD0),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                        focusedContainerColor = Color.Black.copy(alpha = 0.3f),
+                        unfocusedContainerColor = Color.Black.copy(alpha = 0.3f)
                     ),
                     singleLine = true,
                     trailingIcon = {
@@ -2360,56 +2579,177 @@ fun StreamPlayerOverlay(
                             },
                             modifier = Modifier.testTag("send_comment_btn")
                         ) {
-                            Icon(imageVector = Icons.Default.Send, contentDescription = "send chat message", tint = Color.White, modifier = Modifier.size(16.dp))
+                            Text(text = "➤", color = Color(0xFF00D5B5), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 )
 
-                // High visual Like button
+                // Large Premium Floating Support Gift Button (🎁)
                 IconButton(
-                    onClick = { viewModel.likeCurrentStream() },
+                    onClick = { showGiftDrawer = !showGiftDrawer },
                     modifier = Modifier
-                        .background(Color.White.copy(alpha = 0.15f), CircleShape)
-                        .size(42.dp)
-                        .testTag("like_stream_btn")
+                        .size(46.dp)
+                        .background(
+                            Brush.linearGradient(listOf(Color(0xFFFF00CC), Color(0xFF3333FF))),
+                            CircleShape
+                        )
+                        .testTag("gift_drawer_btn")
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(imageVector = Icons.Default.Favorite, contentDescription = "heart like action", tint = Color(0xFFB3261E), modifier = Modifier.size(18.dp))
-                        Text(text = "$likesCount", color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Text("🎁", fontSize = 22.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // --- 7. BOTTOM MENU NAVIGATION GRID ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                    .padding(vertical = 10.dp, horizontal = 6.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Feature 1: Mute/Unmute Microphone
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            viewModel.isMicOpen.value = !viewModel.isMicOpen.value
+                            android.widget.Toast.makeText(
+                                context,
+                                if (viewModel.isMicOpen.value) "Microphone Open!" else "Microphone Muted!",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = if (viewModel.isMicOpen.value) "🎙️" else "🔇",
+                        fontSize = 20.sp
+                    )
+                    Text("Mic", color = Color.White, fontSize = 9.sp)
                 }
 
-                // High Visual Gift Drawer button (Viewer Only)
-                if (!isHost) {
-                    IconButton(
-                        onClick = { showGiftDrawer = !showGiftDrawer },
-                        modifier = Modifier
-                            .background(Color(0xFF6750A4), CircleShape)
-                            .size(42.dp)
-                            .testTag("gift_drawer_btn")
-                    ) {
-                        Icon(imageVector = Icons.Default.CardGiftcard, contentDescription = "Sponsor Gift Icon", tint = Color.White, modifier = Modifier.size(20.dp))
-                    }
+                // Feature 2: Background Music Sound Track Simulation
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            isBackgroundMusicPlaying = !isBackgroundMusicPlaying
+                            android.widget.Toast.makeText(
+                                context,
+                                if (isBackgroundMusicPlaying) "Playing Barca Stadium Hymn!" else "Sound Effects Stopped",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = if (isBackgroundMusicPlaying) "🎵" else "🔇",
+                        fontSize = 20.sp
+                    )
+                    Text("Music", color = Color.White, fontSize = 9.sp)
+                }
+
+                // Feature 3: Room Settings Configuration
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showSettingsDialog = true },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("⚙️", fontSize = 20.sp)
+                    Text("Settings", color = Color.White, fontSize = 9.sp)
+                }
+
+                // Feature 4: Virtual Gift Bag
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showBagDialog = true },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🎒", fontSize = 20.sp)
+                    Text("Bag", color = Color.White, fontSize = 9.sp)
+                }
+
+                // Feature 5: Recharge Quick Coins Top-up
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            // Instantly increment virtual balance by 1000 simulated bonus coins
+                            viewModel.coinSystemBuyCoins(500)
+                            android.widget.Toast.makeText(context, "Quick Recharge added 1000 Coins! 🪙", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("💰", fontSize = 20.sp)
+                    Text("Recharge", color = Color.White, fontSize = 9.sp)
+                }
+
+                // Feature 6: Multiplayer Sea Hunter Fish Arena activation
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            if (!viewModel.isFishGameRunning.value) {
+                                viewModel.startFishGame()
+                            } else {
+                                viewModel.exitFishGame()
+                            }
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🎮", fontSize = 20.sp)
+                    Text("Games", color = Color.White, fontSize = 9.sp)
+                }
+
+                // Feature 7: Firework Effects spark triggers
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            triggerFireworksEffect = true
+                            android.widget.Toast.makeText(context, "Rising spark effects triggered! 🎉", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🎉", fontSize = 20.sp)
+                    Text("Effects", color = Color.White, fontSize = 9.sp)
+                }
+
+                // Feature 8: Shield / Room Admin Panel
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showAdminDialog = true },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🛡️", fontSize = 20.sp)
+                    Text("Admin", color = Color.White, fontSize = 9.sp)
                 }
             }
         }
 
-        // 7. EXPANDABLE GIFT SPONSORSHIP CARD DRAWER (TikTok inspired sliding panel)
-        if (showGiftDrawer && !isHost) {
+        // --- EXPANDABLE SUPPORT GIFT PANEL DRAWERS ---
+        if (showGiftDrawer) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable { showGiftDrawer = false } // Dismiss when click outside
+                    .clickable { showGiftDrawer = false } // Dismiss clicking backdrop overlay
             )
 
             Card(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(210.dp)
-                    .clickable(enabled = false, onClick = {}), // Prevent dismiss clicks
+                    .height(220.dp)
+                    .clickable(enabled = false, onClick = {}),
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1D192B))
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF13101B)),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -2418,67 +2758,67 @@ fun StreamPlayerOverlay(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "🎁 Support Streamer - Send Gift",
+                            text = "🎁 Support Room Star - Send Gifts",
                             color = Color.White,
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
                         IconButton(onClick = { showGiftDrawer = false }) {
-                            Icon(imageVector = Icons.Default.Close, tint = Color.White.copy(alpha = 0.6f), contentDescription = "close")
+                            Icon(imageVector = Icons.Default.Close, tint = Color.White.copy(alpha = 0.6f), contentDescription = "dismiss")
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    val giftItems = listOf(
+                    val options = listOf(
                         Triple("🌹 Rose", 5.0, "rose"),
                         Triple("⚽ Barca Jersey", 50.0, "jersey"),
-                        Triple("⚡ Ballon d'Or", 250.0, "ballon"),
+                        Triple("🏆 Ballon d'Or", 250.0, "ballon"),
                         Triple("🏟️ Super Camp Nou", 500.0, "campnou")
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        for (gift in giftItems) {
+                        for (item in options) {
                             Card(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable {
-                                        viewModel.sendGiftToStreamer(gift.first, gift.second)
-                                        showGiftDrawer = false // Auto-close drawer
-                                    }
-                                    .testTag("gift_item_btn_${gift.third}"),
+                                        viewModel.sendGiftToStreamer(item.first, item.second)
+                                        showGiftDrawer = false
+                                        android.widget.Toast.makeText(context, "Sponser gift ${item.first} dispatched!", android.widget.Toast.LENGTH_SHORT).show()
+                                    },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(8.dp),
+                                    modifier = Modifier.padding(10.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    val emoji = when (gift.third) {
+                                    val iconRep = when (item.third) {
                                         "rose" -> "🌹"
                                         "jersey" -> "👕"
                                         "ballon" -> "🏆"
                                         else -> "🏟️"
                                     }
-                                    Text(text = emoji, fontSize = 22.sp)
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(text = iconRep, fontSize = 24.sp)
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     Text(
-                                        text = gift.first.replace(emoji, "").trim(),
+                                        text = item.first.replace(iconRep, "").trim(),
                                         color = Color.White,
-                                        fontSize = 9.sp,
+                                        fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = "${gift.second.toInt()} 🪙",
+                                        text = "${item.second.toInt()} 🪙",
                                         color = Color(0xFFFFB300),
-                                        fontSize = 9.sp,
+                                        fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -2487,6 +2827,152 @@ fun StreamPlayerOverlay(
                     }
                 }
             }
+        }
+
+        // --- INTERACTIVE DIALOGS SIMULATION ---
+
+        // Bag / Inventory dialog
+        if (showBagDialog) {
+            AlertDialog(
+                onDismissRequest = { showBagDialog = false },
+                title = { Text("🎒 Virtuelle Bag List") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Check the live active inventory stored in your inventory bag:",
+                            color = Color.LightGray,
+                            fontSize = 12.sp
+                        )
+                        HorizontalDivider()
+                        
+                        val activeInventory = listOf(
+                            "🔑 Gold VIP Cabin Ticket" to "Unlocks VIP streaming levels",
+                            "🎤 Premium Golden Condenser Mic" to "Vocal feedback upgrade icon",
+                            "🛡️ Camp Nou Mod Badge" to "Authentic moderator tag"
+                        )
+                        
+                        activeInventory.forEach { item ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.submitDirectComment("used ${item.first} in the voice cabin!")
+                                        showBagDialog = false
+                                    },
+                                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(item.first, color = Color(0xFF00FFD0), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text(item.second, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showBagDialog = false }) {
+                        Text("Close", color = Color(0xFF00FFD0))
+                    }
+                },
+                containerColor = Color(0xFF13101B)
+            )
+        }
+
+        // Settings config dialog
+        if (showSettingsDialog) {
+            AlertDialog(
+                onDismissRequest = { showSettingsDialog = false },
+                title = { Text("⚙️ Voice Room Settings") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Show Noticeboard Rules", color = Color.White, fontSize = 13.sp)
+                            Switch(
+                                checked = showNoticeBoard,
+                                onCheckedChange = { showNoticeBoard = it },
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF00FFD0))
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Disable Mic Entry", color = Color.White, fontSize = 13.sp)
+                            var disableMicCheck by remember { mutableStateOf(false) }
+                            Switch(
+                                checked = disableMicCheck,
+                                onCheckedChange = { disableMicCheck = it }
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showSettingsDialog = false }) {
+                        Text("Done", color = Color(0xFF00FFD0))
+                    }
+                },
+                containerColor = Color(0xFF13101B)
+            )
+        }
+
+        // Admin action panel
+        if (showAdminDialog) {
+            AlertDialog(
+                onDismissRequest = { showAdminDialog = false },
+                title = { Text("🛡️ Room Admin Dashboard") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Manage current speaking limits and voice slot parameters safely:", color = Color.LightGray, fontSize = 11.sp)
+                        
+                        Button(
+                            onClick = {
+                                seatOccupants = listOf(
+                                    Triple("Barca-live Host", "H", Color(0xFFEF4444)),
+                                    Triple<String?, String, Color>(null, "", Color.Transparent),
+                                    Triple<String?, String, Color>(null, "", Color.Transparent),
+                                    Triple<String?, String, Color>(null, "", Color.Transparent),
+                                    Triple<String?, String, Color>(null, "", Color.Transparent),
+                                    Triple<String?, String, Color>(null, "", Color.Transparent),
+                                    Triple<String?, String, Color>(null, "", Color.Transparent),
+                                    Triple<String?, String, Color>(null, "", Color.Transparent),
+                                    Triple<String?, String, Color>(null, "", Color.Transparent)
+                                )
+                                speakingSeats = setOf(1)
+                                android.widget.Toast.makeText(context, "Slashes empty slot, reset cabinets!", android.widget.Toast.LENGTH_SHORT).show()
+                                showAdminDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB3261E)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Mute & Empty All Guest Slots 🎤", fontSize = 11.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.liveViewersSim.value += 125
+                                android.widget.Toast.makeText(context, "Simulated viewer base incremented by +125 listeners!", android.widget.Toast.LENGTH_SHORT).show()
+                                showAdminDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00FFD0)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Inject +125 Simulated Viewers 👥", color = Color.Black, fontSize = 11.sp)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAdminDialog = false }) {
+                        Text("Dismiss", color = Color(0xFF00FFD0))
+                    }
+                },
+                containerColor = Color(0xFF13101B)
+            )
         }
     }
 }
@@ -2526,6 +3012,1144 @@ fun MovingFishIndicator(fishPositionProvider: () -> Float) {
                 contentAlignment = Alignment.Center
             ) {
                 Text("🐠", fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+// ==========================================
+// 🎮 COIN SYSTEM SIMULATOR DASHBOARD 
+// ==========================================
+@Composable
+fun CoinSystemDashboard(viewModel: BarcaViewModel) {
+    val context = LocalContext.current
+    
+    // Read state from ViewModel
+    val currentUserId by viewModel.coinSystemCurrentUser.collectAsState()
+    val usersMap by viewModel.coinSystemUsers.collectAsState()
+    val coinTransactions by viewModel.coinSystemTransactions.collectAsState()
+    
+    // Local Inputs State
+    var userIdInput by remember { mutableStateOf("") }
+    var selectedPackageAmount by remember { mutableStateOf(100) }
+    
+    // Admin Generator State
+    var adminPasswordInput by remember { mutableStateOf("") }
+    var adminTargetUserIdInput by remember { mutableStateOf("") }
+    var adminCoinAmountInput by remember { mutableStateOf("") }
+    var adminMessageState by remember { mutableStateOf<Pair<Boolean, String>?>(null) } // Pair(IsSuccess, Message)
+    
+    // Purchase Status State
+    var purchaseMessageState by remember { mutableStateOf<String?>(null) }
+    
+    // Send Gift State
+    var giftReceiverIdInput by remember { mutableStateOf("") }
+    var giftCoinsInput by remember { mutableStateOf("") }
+    var giftMessageState by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+
+    val loadedUserObj = currentUserId?.let { usersMap[it] }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .background(Color(0xFF0F172A))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // --- 1. TITLE HEADER ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            border = BorderStroke(1.dp, Color(0xFF334155))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🎮", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Barca-live Coin System",
+                        color = Color(0xFF38BDF8),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Virtual coin purchase and management system.",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        // --- 2. USER WALLET CARD ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            border = BorderStroke(1.dp, Color(0xFF334155))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "👤 User Wallet",
+                    color = Color(0xFF38BDF8),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("User ID", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(6.dp))
+                
+                OutlinedTextField(
+                    value = userIdInput,
+                    onValueChange = { userIdInput = it },
+                    placeholder = { Text("Enter user ID", color = Color.White.copy(alpha = 0.4f)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_user_id_input"),
+                    textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF38BDF8),
+                        unfocusedBorderColor = Color(0xFF334155),
+                        focusedContainerColor = Color(0xFF0F172A),
+                        unfocusedContainerColor = Color(0xFF0F172A)
+                    )
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                
+                Button(
+                    onClick = {
+                        if (userIdInput.trim().isEmpty()) {
+                            android.widget.Toast.makeText(context, "Enter user ID", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            viewModel.loadCoinSystemUser(userIdInput)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_load_user_btn"),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF38BDF8)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Load User", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.height(14.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Coins Balance",
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "${loadedUserObj?.coins ?: 0} 🪙",
+                            color = Color(0xFF22C55E),
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.testTag("coin_system_balance_text")
+                        )
+                    }
+                    
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Diamonds Balance",
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "${loadedUserObj?.diamonds ?: 0} 💎",
+                            color = Color(0xFFE91E63),
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.testTag("coin_system_diamonds_text")
+                        )
+                    }
+                }
+                
+                if (currentUserId != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Current User: $currentUserId",
+                        color = Color(0xFF38BDF8).copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        // --- 3. BUY COINS CARD ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            border = BorderStroke(1.dp, Color(0xFF334155))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "🛒 Buy Coins",
+                    color = Color(0xFF38BDF8),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                
+                val packages = listOf(
+                    100 to "$1",
+                    500 to "$5",
+                    1000 to "$10",
+                    5000 to "$50",
+                    10000 to "$100"
+                )
+                
+                var showDropdown by remember { mutableStateOf(false) }
+                
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = { showDropdown = true },
+                        modifier = Modifier.fillMaxWidth().testTag("coin_system_package_dropdown"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color(0xFF0F172A),
+                            contentColor = Color.White
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFF334155))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "$selectedPackageAmount Coins - ${packages.firstOrNull { it.first == selectedPackageAmount }?.second ?: ""}",
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Dropdown indicator",
+                                tint = Color(0xFF38BDF8)
+                            )
+                        }
+                    }
+                    
+                    DropdownMenu(
+                        expanded = showDropdown,
+                        onDismissRequest = { showDropdown = false },
+                        modifier = Modifier.background(Color(0xFF1E293B)).width(280.dp)
+                    ) {
+                        packages.forEach { pkg ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = "${pkg.first} Coins - ${pkg.second}",
+                                        color = Color.White,
+                                        fontSize = 14.sp
+                                    ) 
+                                },
+                                onClick = {
+                                    selectedPackageAmount = pkg.first
+                                    showDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Button(
+                    onClick = {
+                        if (currentUserId == null) {
+                            android.widget.Toast.makeText(context, "Load user first", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            val success = viewModel.coinSystemBuyCoins(selectedPackageAmount)
+                            if (success) {
+                                purchaseMessageState = "Successfully purchased $selectedPackageAmount coins"
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_buy_coins_btn"),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF38BDF8)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Purchase Coins", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                
+                purchaseMessageState?.let { msg ->
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = msg,
+                        color = Color(0xFF22C55E),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.testTag("coin_system_purchase_msg")
+                    )
+                }
+            }
+        }
+
+        // --- 4. ADMIN COIN GENERATOR ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            border = BorderStroke(2.dp, Color(0xFFF59E0B))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "👑 Admin Coin Generator",
+                    color = Color(0xFFF59E0B),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                
+                Text("Admin Password", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = adminPasswordInput,
+                    onValueChange = { adminPasswordInput = it },
+                    placeholder = { Text("Enter admin password", color = Color.White.copy(alpha = 0.4f)) },
+                    singleLine = true,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_admin_password_input"),
+                    textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFF59E0B),
+                        unfocusedBorderColor = Color(0xFF334155),
+                        focusedContainerColor = Color(0xFF0F172A),
+                        unfocusedContainerColor = Color(0xFF0F172A)
+                    )
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text("Target User ID", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = adminTargetUserIdInput,
+                    onValueChange = { adminTargetUserIdInput = it },
+                    placeholder = { Text("User ID", color = Color.White.copy(alpha = 0.4f)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_admin_target_input"),
+                    textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFF59E0B),
+                        unfocusedBorderColor = Color(0xFF334155),
+                        focusedContainerColor = Color(0xFF0F172A),
+                        unfocusedContainerColor = Color(0xFF0F172A)
+                    )
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text("Coin Amount", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = adminCoinAmountInput,
+                    onValueChange = { adminCoinAmountInput = it },
+                    placeholder = { Text("Enter coin amount", color = Color.White.copy(alpha = 0.4f)) },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_admin_amount_input"),
+                    textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFF59E0B),
+                        unfocusedBorderColor = Color(0xFF334155),
+                        focusedContainerColor = Color(0xFF0F172A),
+                        unfocusedContainerColor = Color(0xFF0F172A)
+                    )
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Button(
+                    onClick = {
+                        val amt = adminCoinAmountInput.toIntOrNull() ?: 0
+                        val res = viewModel.coinSystemAdminGenerateCoins(
+                            adminPasswordInput,
+                            adminTargetUserIdInput,
+                            amt
+                        )
+                        adminMessageState = res
+                        if (res.first) {
+                            adminPasswordInput = ""
+                            adminTargetUserIdInput = ""
+                            adminCoinAmountInput = ""
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_admin_generate_btn"),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Generate Coins", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                
+                adminMessageState?.let { (success, msg) ->
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = msg,
+                        color = if (success) Color(0xFF22C55E) else Color(0xFFEF4444),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.testTag("coin_system_admin_msg")
+                    )
+                }
+            }
+        }
+
+        // --- 5. SEND GIFT CARD ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            border = BorderStroke(1.dp, Color(0xFF334155))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "🎁 Send Gift",
+                    color = Color(0xFF38BDF8),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                
+                Text("Receiver User ID", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = giftReceiverIdInput,
+                    onValueChange = { giftReceiverIdInput = it },
+                    placeholder = { Text("Receiver ID", color = Color.White.copy(alpha = 0.4f)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_gift_receiver_input"),
+                    textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF38BDF8),
+                        unfocusedBorderColor = Color(0xFF334155),
+                        focusedContainerColor = Color(0xFF0F172A),
+                        unfocusedContainerColor = Color(0xFF0F172A)
+                    )
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text("Gift Cost", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = giftCoinsInput,
+                    onValueChange = { giftCoinsInput = it },
+                    placeholder = { Text("Gift coin cost", color = Color.White.copy(alpha = 0.4f)) },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_gift_amount_input"),
+                    textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF38BDF8),
+                        unfocusedBorderColor = Color(0xFF334155),
+                        focusedContainerColor = Color(0xFF0F172A),
+                        unfocusedContainerColor = Color(0xFF0F172A)
+                    )
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Button(
+                    onClick = {
+                        if (currentUserId == null) {
+                            android.widget.Toast.makeText(context, "Load user first", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            val amt = giftCoinsInput.toIntOrNull() ?: 0
+                            val res = viewModel.coinSystemSendGift(giftReceiverIdInput, amt)
+                            giftMessageState = res
+                            if (res.first) {
+                                giftReceiverIdInput = ""
+                                giftCoinsInput = ""
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("coin_system_send_gift_btn"),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF38BDF8)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Send Gift", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                
+                giftMessageState?.let { (success, msg) ->
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = msg,
+                        color = if (success) Color(0xFF22C55E) else Color(0xFFEF4444),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.testTag("coin_system_gift_msg")
+                    )
+                }
+            }
+        }
+
+        // --- 6. TRANSACTION HISTORY CARD ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            border = BorderStroke(1.dp, Color(0xFF334155))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "📜 Transaction History",
+                    color = Color(0xFF38BDF8),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                
+                if (coinTransactions.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No history available.",
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 12.sp
+                        )
+                    }
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        coinTransactions.forEach { tx ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF334155))
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = tx.type,
+                                            color = Color(0xFF38BDF8),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = tx.date,
+                                            color = Color.White.copy(alpha = 0.5f),
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "User: ${tx.user}",
+                                        color = Color.White,
+                                        fontSize = 12.sp
+                                    )
+                                    Text(
+                                        text = "Amount: ${tx.amount}",
+                                        color = Color.White,
+                                        fontSize = 12.sp
+                                    )
+                                    if (!tx.receiver.isNullOrEmpty()) {
+                                        Text(
+                                            text = "Receiver: ${tx.receiver}",
+                                            color = Color.White,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    if (tx.diamonds != null) {
+                                        Text(
+                                            text = "Diamonds: ${tx.diamonds}",
+                                            color = Color(0xFFE91E63),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AgencyCenterDashboard(viewModel: BarcaViewModel) {
+    val context = LocalContext.current
+    
+    // Read reactive flows from BarcaViewModel
+    val isAgent by viewModel.agencyIsAgent.collectAsState()
+    val agentCode by viewModel.agencyAgentCode.collectAsState()
+    val joinedCode by viewModel.agencyJoinedCode.collectAsState()
+    val rank by viewModel.agencyRank.collectAsState()
+    val income by viewModel.agencyIncome.collectAsState()
+    val commission by viewModel.agencyCommission.collectAsState()
+    val subAgentsCount by viewModel.agencySubAgentsCount.collectAsState()
+    val hosts = viewModel.agencyHosts
+    val stats by viewModel.userStats.collectAsState()
+    
+    // Local text inputs
+    var joinCodeInput by remember { mutableStateOf("") }
+    var withdrawAmountValue by remember { mutableStateOf("") }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .background(Color(0xFFD8FFF4)) // Mint Green background of Agency Center!
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // --- 1. HEADER TITLE ---
+        Text(
+            text = "Barca-live Agency Center",
+            color = Color(0xFF0F172A),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            textAlign = TextAlign.Center
+        )
+
+        // --- 2. THE TOP VIP METRIC GRADIENT CARD ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(Color(0xFFB9FFF7), Color(0xFF9FDCFF))
+                        )
+                    )
+                    .padding(20.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Profile details
+                    Text(
+                        text = stats?.username ?: "Barca User",
+                        color = Color(0xFF0F172A),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "ID: ${stats?.myReferralCode ?: "1086462"}",
+                        color = Color(0xFF1E293B),
+                        fontSize = 14.sp
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Agent Code: ${if (isAgent) agentCode else "Not Agent"}",
+                            color = Color(0xFF1E293B),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFFFF9800), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = rank,
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Buttons of copy invite actions
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                if (!isAgent) {
+                                    android.widget.Toast.makeText(context, "Please become an agent first!", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    val link = "https://barca-live.github.io/?host=$agentCode"
+                                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    val clip = android.content.ClipData.newPlainText("Host Invite", link)
+                                    clipboard.setPrimaryClip(clip)
+                                    android.widget.Toast.makeText(context, "Host invite copied: $link", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D7C6)),
+                            shape = RoundedCornerShape(50.dp),
+                            modifier = Modifier.weight(1f).testTag("agency_invite_host_btn")
+                        ) {
+                            Text("Invite Host", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                if (!isAgent) {
+                                    android.widget.Toast.makeText(context, "Please become an agent first!", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    val link = "https://barca-live.github.io/?agent=$agentCode"
+                                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    val clip = android.content.ClipData.newPlainText("Agent Invite", link)
+                                    clipboard.setPrimaryClip(clip)
+                                    android.widget.Toast.makeText(context, "Agent invite copied: $link", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF32A9FF)),
+                            shape = RoundedCornerShape(50.dp),
+                            modifier = Modifier.weight(1f).testTag("agency_invite_agent_btn")
+                        ) {
+                            Text("Invite Agent", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+
+                    // Simulated QR Code Frame exactly representing '#qr' in style
+                    if (isAgent) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .size(110.dp)
+                                .background(Color.White, RoundedCornerShape(12.dp))
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                // Design an beautiful scan pattern / QR barcode offline visual matrix
+                                val w = size.width
+                                val h = size.height
+                                drawRect(color = Color.Black, topLeft = Offset(0f, 0f), size = androidx.compose.ui.geometry.Size(w * 0.3f, h * 0.3f))
+                                drawRect(color = Color.Black, topLeft = Offset(w * 0.7f, 0f), size = androidx.compose.ui.geometry.Size(w * 0.3f, h * 0.3f))
+                                drawRect(color = Color.Black, topLeft = Offset(0f, h * 0.7f), size = androidx.compose.ui.geometry.Size(w * 0.3f, h * 0.3f))
+                                
+                                // Random qr squares
+                                for (i in 2..8) {
+                                    for (j in 2..8) {
+                                        if ((i + j) % 2 == 0) {
+                                            drawRect(
+                                                color = Color.Black,
+                                                topLeft = Offset(w * 0.1f * i, h * 0.1f * j),
+                                                size = androidx.compose.ui.geometry.Size(w * 0.08f, h * 0.08f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Text(
+                            text = "Scan to Link Agency Team",
+                            color = Color(0xFF1E293B),
+                            fontSize = 11.sp,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Grid layout representing the 4 stats boxes
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            // Hosts Count Box
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(Color(0xFFC8FFF4), RoundedCornerShape(15.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Column {
+                                    Text("Hosts", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        text = "${hosts.size}",
+                                        color = Color(0xFF0D9488),
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            // Sub Agents Box
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(Color(0xFFC8FFF4), RoundedCornerShape(15.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Column {
+                                    Text("Sub Agents", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "$subAgentsCount",
+                                            color = Color(0xFF0D9488),
+                                            fontSize = 22.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        // Plus clickable adder to make it visual and high-fidelity
+                                        IconButton(
+                                            onClick = {
+                                                if (isAgent) {
+                                                    val randomSubAgentNames = listOf("Matias_FCB", "Ronaldo_Fan", "Pedri_Vibe", "Gavi_Camp")
+                                                    val added = randomSubAgentNames.random()
+                                                    android.widget.Toast.makeText(context, "Added subagent $added to your tree!", android.widget.Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    android.widget.Toast.makeText(context, "Become agent first!", android.widget.Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Text("➕", fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            // Income Box
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(Color(0xFFC8FFF4), RoundedCornerShape(15.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Column {
+                                    Text("Income", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        text = "$${String.format("%.2f", income)}",
+                                        color = Color(0xFF0D9488),
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            // Commission Box
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(Color(0xFFC8FFF4), RoundedCornerShape(15.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Column {
+                                    Text("Commission", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        text = "$commission%",
+                                        color = Color(0xFF0D9488),
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- 3. BECOME AGENT CARD PANEL ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Become Agent",
+                    color = Color(0xFF0F172A),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Open a certified agency node, invite hosts, manage users and start collecting massive lifetime commission rewards up to 12%.",
+                    color = Color.DarkGray,
+                    fontSize = 12.sp
+                )
+                Button(
+                    onClick = {
+                        val generatedCode = viewModel.becomeAgencyAgent()
+                        android.widget.Toast.makeText(context, "Approved! Your Agent Code: $generatedCode", android.widget.Toast.LENGTH_LONG).show()
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("agency_become_agent_btn"),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D7C6)),
+                    shape = RoundedCornerShape(50.dp)
+                ) {
+                    Text(
+                        text = if (isAgent) "AGENT ACTIVE (Code: $agentCode)" else "Generate Agent Code",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+
+        // --- 4. JOIN AGENCY CARD PANEL ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Join Agency",
+                    color = Color(0xFF0F172A),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                if (joinedCode.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFCCFFEA), RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Linked with Agency: $joinedCode ✅",
+                            color = Color(0xFF1B5E20),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = joinCodeInput,
+                        onValueChange = { joinCodeInput = it },
+                        placeholder = { Text("Enter Agent Code", color = Color.Gray.copy(alpha = 0.6f)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("agency_join_input"),
+                        textStyle = TextStyle(color = Color(0xFF1E293B), fontSize = 14.sp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF10B981),
+                            unfocusedBorderColor = Color.LightGray
+                        )
+                    )
+                    
+                    Button(
+                        onClick = {
+                            if (joinCodeInput.trim().isEmpty()) {
+                                android.widget.Toast.makeText(context, "Please enter an agent code prefix!", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                val success = viewModel.joinAgencyByCode(joinCodeInput)
+                                if (success) {
+                                    joinCodeInput = ""
+                                    android.widget.Toast.makeText(context, "Joined successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("agency_join_submit_btn"),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF32A9FF)),
+                        shape = RoundedCornerShape(50.dp)
+                    ) {
+                        Text("Join", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+
+        // --- 5. WITHDRAW CARD PANEL ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Withdraw",
+                    color = Color(0xFF0F172A),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Deduct from your simulated agency balance. Commission is instantly translated to payments.",
+                    color = Color.DarkGray,
+                    fontSize = 12.sp
+                )
+                
+                OutlinedTextField(
+                    value = withdrawAmountValue,
+                    onValueChange = { withdrawAmountValue = it },
+                    placeholder = { Text("Amount ($)", color = Color.Gray.copy(alpha = 0.6f)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("agency_withdraw_input"),
+                    textStyle = TextStyle(color = Color(0xFF1E293B), fontSize = 14.sp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF10B981),
+                        unfocusedBorderColor = Color.LightGray
+                    )
+                )
+                
+                Button(
+                    onClick = {
+                        val amt = withdrawAmountValue.toDoubleOrNull()
+                        if (amt == null || amt <= 0.0) {
+                            android.widget.Toast.makeText(context, "Please enter a valid amount!", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            val res = viewModel.withdrawAgencyIncome(amt)
+                            if (res.first) {
+                                withdrawAmountValue = ""
+                            }
+                            android.widget.Toast.makeText(context, res.second, android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("agency_withdraw_submit_btn"),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D7C6)),
+                    shape = RoundedCornerShape(50.dp)
+                ) {
+                    Text("Request Withdraw", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
+        }
+
+        // --- 6. MY HOSTS PANEL ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "My Hosts",
+                        color = Color(0xFF0F172A),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(
+                        onClick = {
+                            if (isAgent) {
+                                val hostNames = listOf("Lionel_M10", "Gavi_CampNou", "Pedri_Magic", "DeJong_FC")
+                                val hId = (100000..999999).random().toString()
+                                val selectedName = hostNames.random()
+                                viewModel.addAgencyHostInteractively(selectedName, hId)
+                            } else {
+                                android.widget.Toast.makeText(context, "Become agent first!", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.size(28.dp).testTag("agency_add_host_btn_plus")
+                    ) {
+                        Text("➕", fontSize = 14.sp)
+                    }
+                }
+                Text(
+                    text = "Linked broadcasters earning coins currently. Click '+' above to sign up new hosts to your team!",
+                    color = Color.DarkGray,
+                    fontSize = 11.sp
+                )
+                
+                if (!isAgent) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Please become an agent first to view hosts list.",
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else if (hosts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No active hosts registered. Click 'Invite Host' or '+' to add one.",
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        for (host in hosts) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFF5F5F5), RoundedCornerShape(15.dp))
+                                    .padding(14.dp)
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = host.name,
+                                        color = Color(0xFF0F172A),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "User ID: ${host.userId}",
+                                        color = Color.Gray,
+                                        fontSize = 12.sp
+                                    )
+                                    Text(
+                                        text = "Host Income: $${String.format("%.2f", host.incomeUSD)}",
+                                        color = Color(0xFF0F172A),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Button(
+                                        onClick = {
+                                            viewModel.removeAgencyHost(host.uid)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4F4F)),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.fillMaxWidth().height(32.dp).testTag("agency_remove_host_${host.uid}"),
+                                        contentPadding = PaddingValues(0.dp)
+                                    ) {
+                                        Text("Remove Host", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
