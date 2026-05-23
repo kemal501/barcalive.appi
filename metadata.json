@@ -1,0 +1,6 @@
+{
+  "name": "Barca-live",
+  "description": "Barca-live is an offline live streaming simulation & social entertainment platform where users can stream, earn coins, and explore rooms.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
